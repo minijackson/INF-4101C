@@ -1,0 +1,10 @@
+[package]
+name = "INF-4101C"
+version = "0.0.1"
+authors = ["Rémi Nicole"]
+license = "MIT"
+
+[dependencies]
+rscam = "0.5.0"
+piston_window = "0.53.0"
+image = "0.10.0"
