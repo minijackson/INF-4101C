@@ -14,7 +14,7 @@ pub fn stream(sender : Sender<ImageBuffer<Rgba<u8>, Vec<u8>>>) {
 
         cam.start(&Config {
             interval: (1, 30),
-            resolution: (1280, 720),
+            resolution: (640, 480),
             format: b"RGB3",
             ..Default::default()
         }).unwrap();

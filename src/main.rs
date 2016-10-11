@@ -1,14 +1,20 @@
 extern crate piston_window;
+extern crate image;
 
 use std::sync::mpsc::channel;
 
 mod capture;
 mod display;
+mod processing;
 
 use self::piston_window::{
     PistonWindow,
     WindowSettings,
     Texture
+};
+
+use self::image::{
+    ConvertBuffer
 };
 
 fn main() {
@@ -27,7 +33,8 @@ fn main() {
 
     while let Some(e) = window.next() {
         if let Ok(frame) = receiver.try_recv() {
-            displayed_texture = display::build_texture(frame, displayed_texture, &mut window);
+            let frame = processing::sobel_optimized(frame.convert());
+            displayed_texture = display::build_texture(frame.convert(), displayed_texture, &mut window);
         }
 
         display::show_texture(&displayed_texture, &mut window, e);
