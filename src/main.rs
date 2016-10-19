@@ -30,14 +30,15 @@ const USAGE: &'static str = "
 INF-4101C Optimization course.
 
 Usage:
-  inf_4101c display [--median-kernel-size=<size>]
-  inf_4101c save <prefix> [--median-kernel-size=<size> --count=<n>]
+  inf_4101c display [--device=<video-device> --median-kernel-size=<size>]
+  inf_4101c save <prefix> [--device=<video-device> --median-kernel-size=<size> --count=<n>]
   inf_4101c (-h | --help)
   inf_4101c --version
 
 Options:
   -h --help                    Show this screen.
   --version                    Show version.
+  --device=<video-device>      Set the video device to use for the webcam [default: /dev/video0].
   --median-kernel-size=<size>  Set the size of the media filter [default: 5].
   --count=<n>                  Set the number of files to save [default: 10].
 ";
@@ -47,6 +48,7 @@ struct Args {
     cmd_display: bool,
     cmd_save: bool,
     arg_prefix: Option<String>,
+    flag_device: String,
     flag_median_kernel_size: usize,
     flag_count: usize,
     flag_version: bool,
@@ -78,7 +80,7 @@ fn main() {
 
         let (sender, receiver) = channel();
 
-        capture::stream(sender);
+        capture::stream(sender, args.flag_device);
 
         while let Some(e) = window.next() {
             if let Ok(frame) = receiver.try_recv() {
@@ -94,7 +96,7 @@ fn main() {
 
         let (sender, receiver) = channel();
 
-        capture::stream(sender);
+        capture::stream(sender, args.flag_device);
 
         for i in 0..args.flag_count {
 
@@ -103,6 +105,7 @@ fn main() {
             loop {
                 match receiver.try_recv() {
                     Ok(frame) => {
+                        println!("Saving frame {}", path);
                         let frame = process_frame(frame.convert(), args.flag_median_kernel_size);
                         let _     = frame.save(&Path::new(&path)).unwrap();
                         break;

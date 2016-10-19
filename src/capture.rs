@@ -7,10 +7,10 @@ use self::image::{ImageBuffer, Rgba, Rgb, ConvertBuffer};
 use std::sync::mpsc::Sender;
 use std::thread;
 
-pub fn stream(sender : Sender<ImageBuffer<Rgba<u8>, Vec<u8>>>) {
+pub fn stream(sender : Sender<ImageBuffer<Rgba<u8>, Vec<u8>>>, device : String) {
     thread::spawn(move || {
 
-        let mut cam = Camera::new("/dev/video0").unwrap();
+        let mut cam = Camera::new(device.as_str()).unwrap();
 
         cam.start(&Config {
             interval: (1, 30),
