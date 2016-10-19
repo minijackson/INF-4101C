@@ -34,7 +34,9 @@ fn main() {
     while let Some(e) = window.next() {
         if let Ok(frame) = receiver.try_recv() {
             //let frame = processing::sobel_optimized(frame.convert());
-            let frame = processing::median_filter(frame.convert());
+            //let frame = processing::median_filter(frame.convert());
+            //let frame = processing::median_filter_hist(frame.convert(), 9);
+            let frame = processing::median_filter_hist_optimized(frame.convert(), 9);
             displayed_texture = display::build_texture(frame.convert(), displayed_texture, &mut window);
         }
 
