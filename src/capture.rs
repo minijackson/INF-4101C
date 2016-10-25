@@ -2,10 +2,12 @@ extern crate rscam;
 extern crate image;
 
 use self::rscam::{Camera, Config};
-use self::image::{ImageBuffer, Rgba, Rgb, ConvertBuffer};
+use self::image::{ImageBuffer, Rgba, Rgb, ConvertBuffer, GenericImage};
 
 use std::sync::mpsc::Sender;
 use std::thread;
+use std::time;
+use std::path::Path;
 
 pub fn stream(sender : Sender<ImageBuffer<Rgba<u8>, Vec<u8>>>, device : String) {
     thread::spawn(move || {
@@ -29,6 +31,23 @@ pub fn stream(sender : Sender<ImageBuffer<Rgba<u8>, Vec<u8>>>, device : String) 
             if let Err(_) = sender.send(frame.convert()) {
                 break;
             }
+        }
+    });
+}
+
+pub fn fake_stream(sender : Sender<ImageBuffer<Rgba<u8>, Vec<u8>>>, image : String) {
+    thread::spawn(move || {
+        let frame = image::open(&Path::new(image.as_str())).unwrap();
+
+        let frame : ImageBuffer<Rgb<u8>, Vec<u8>>
+            = ImageBuffer::from_fn(frame.width(), frame.height(), |x, y| frame.get_pixel(x, y)).convert();
+
+        loop {
+            if let Err(_) = sender.send(frame.convert()) {
+                break;
+            }
+
+            thread::sleep(time::Duration::from_millis(5));
         }
     });
 }
