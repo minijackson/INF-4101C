@@ -1,3 +1,6 @@
+#![feature(test)]
+extern crate test;
+
 extern crate piston_window;
 extern crate image;
 
@@ -5,7 +8,6 @@ extern crate rustc_serialize;
 extern crate docopt;
 
 use std::sync::mpsc::channel;
-use std::fs::File;
 use std::path::Path;
 
 mod capture;
@@ -27,11 +29,11 @@ use self::image::{
 };
 
 const USAGE: &'static str = "
-INF-4101C Optimization course.
+INF-4101C Optimization project.
 
 Usage:
-  inf_4101c display [--device=<video-device> --median-kernel-size=<size>]
-  inf_4101c save <prefix> [--device=<video-device> --median-kernel-size=<size> --count=<n>]
+  inf_4101c display [--device=<video-device>] [--median-kernel-size=<size>] [--threshold=<n>]
+  inf_4101c save <prefix> [--device=<video-device>] [--median-kernel-size=<size>] [--count=<n>] [--threshold=<n>]
   inf_4101c (-h | --help)
   inf_4101c --version
 
@@ -40,6 +42,7 @@ Options:
   --version                    Show version.
   --device=<video-device>      Set the video device to use for the webcam [default: /dev/video0].
   --median-kernel-size=<size>  Set the size of the media filter [default: 5].
+  --threshold=<n>              Set the final threshold value [default: 127].
   --count=<n>                  Set the number of files to save [default: 10].
 ";
 
@@ -50,6 +53,7 @@ struct Args {
     arg_prefix: Option<String>,
     flag_device: String,
     flag_median_kernel_size: usize,
+    flag_threshold: u8,
     flag_count: usize,
     flag_version: bool,
 }
@@ -84,7 +88,7 @@ fn main() {
 
         while let Some(e) = window.next() {
             if let Ok(frame) = receiver.try_recv() {
-                let frame = process_frame(frame.convert(), args.flag_median_kernel_size);
+                let frame = process_frame(frame.convert(), args.flag_median_kernel_size, args.flag_threshold);
                 displayed_texture = display::build_texture(frame.convert(), displayed_texture, &mut window);
             }
 
@@ -106,7 +110,7 @@ fn main() {
                 match receiver.try_recv() {
                     Ok(frame) => {
                         println!("Saving frame {}", path);
-                        let frame = process_frame(frame.convert(), args.flag_median_kernel_size);
+                        let frame = process_frame(frame.convert(), args.flag_median_kernel_size, args.flag_threshold);
                         let _     = frame.save(&Path::new(&path)).unwrap();
                         break;
                     },
@@ -119,10 +123,80 @@ fn main() {
     }
 }
 
-fn process_frame(frame : ImageBuffer<Luma<u8>, Vec<u8>>, median_kernel_size : usize)
+fn process_frame(frame : ImageBuffer<Luma<u8>, Vec<u8>>, median_kernel_size : usize, threshold : u8)
         -> ImageBuffer<Luma<u8>, Vec<u8>> {
-    //let frame = processing::sobel_optimized(frame.convert());
-    //let frame = processing::median_filter(frame.convert());
-    //let frame = processing::median_filter_hist(frame.convert(), args.flag_median_kernel_size);
-    processing::median_filter_hist_optimized(frame.convert(), median_kernel_size)
+    let frame = processing::median_filter_hist_optimized(frame.convert(), median_kernel_size);
+    processing::sobel_and_threshold(frame.convert(), threshold)
+}
+
+#[cfg(test)]
+mod tests {
+    use ::test::Bencher;
+    use image::{
+        ConvertBuffer,
+        ImageBuffer,
+        Luma
+    };
+    use ::capture;
+
+    #[bench]
+    fn process_frame_3(b : &mut Bencher) {
+        let frame : ImageBuffer<Luma<u8>, Vec<u8>> = capture::capture(String::from("/dev/video0")).convert();
+
+        b.iter(|| {
+            let frame = frame.convert();
+            super::process_frame(frame, 3, 127)
+        });
+    }
+
+    #[bench]
+    fn process_frame_5(b : &mut Bencher) {
+        let frame : ImageBuffer<Luma<u8>, Vec<u8>> = capture::capture(String::from("/dev/video0")).convert();
+
+        b.iter(|| {
+            let frame = frame.convert();
+            super::process_frame(frame, 5, 127)
+        });
+    }
+
+    #[bench]
+    fn process_frame_9(b : &mut Bencher) {
+        let frame : ImageBuffer<Luma<u8>, Vec<u8>> = capture::capture(String::from("/dev/video0")).convert();
+
+        b.iter(|| {
+            let frame = frame.convert();
+            super::process_frame(frame, 9, 127)
+        });
+    }
+
+    #[bench]
+    fn process_frame_15(b : &mut Bencher) {
+        let frame : ImageBuffer<Luma<u8>, Vec<u8>> = capture::capture(String::from("/dev/video0")).convert();
+
+        b.iter(|| {
+            let frame = frame.convert();
+            super::process_frame(frame, 15, 127)
+        });
+    }
+
+    #[bench]
+    fn process_frame_21(b : &mut Bencher) {
+        let frame : ImageBuffer<Luma<u8>, Vec<u8>> = capture::capture(String::from("/dev/video0")).convert();
+
+        b.iter(|| {
+            let frame = frame.convert();
+            super::process_frame(frame, 21, 127)
+        });
+    }
+
+    #[bench]
+    fn process_frame_31(b : &mut Bencher) {
+        let frame : ImageBuffer<Luma<u8>, Vec<u8>> = capture::capture(String::from("/dev/video0")).convert();
+
+        b.iter(|| {
+            let frame = frame.convert();
+            super::process_frame(frame, 31, 127)
+        });
+    }
+
 }

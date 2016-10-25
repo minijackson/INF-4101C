@@ -32,3 +32,21 @@ pub fn stream(sender : Sender<ImageBuffer<Rgba<u8>, Vec<u8>>>, device : String) 
         }
     });
 }
+
+pub fn capture(device : String) -> ImageBuffer<Rgba<u8>, Vec<u8>> {
+    let mut cam = Camera::new(device.as_str()).unwrap();
+
+    cam.start(&Config {
+        interval: (1, 30),
+        resolution: (640, 480),
+        format: b"RGB3",
+        ..Default::default()
+    }).unwrap();
+
+    let frame = cam.capture().unwrap();
+    let frame : ImageBuffer<Rgb<u8>, _>
+        = ImageBuffer::from_raw(frame.resolution.0,
+                                frame.resolution.1,
+                                frame).unwrap();
+    return frame.convert();
+}
