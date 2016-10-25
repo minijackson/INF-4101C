@@ -151,7 +151,7 @@ mod tests {
 
     #[bench]
     fn process_frame_3(b : &mut Bencher) {
-        let frame : ImageBuffer<Luma<u8>, Vec<u8>> = capture::capture(String::from("/dev/video0")).convert();
+        let frame : ImageBuffer<Luma<u8>, Vec<u8>> = capture::fake_capture("fake.jpg");
 
         b.iter(|| {
             let frame = frame.convert();
@@ -161,7 +161,7 @@ mod tests {
 
     #[bench]
     fn process_frame_5(b : &mut Bencher) {
-        let frame : ImageBuffer<Luma<u8>, Vec<u8>> = capture::capture(String::from("/dev/video0")).convert();
+        let frame : ImageBuffer<Luma<u8>, Vec<u8>> = capture::fake_capture("fake.jpg");
 
         b.iter(|| {
             let frame = frame.convert();
@@ -171,7 +171,7 @@ mod tests {
 
     #[bench]
     fn process_frame_9(b : &mut Bencher) {
-        let frame : ImageBuffer<Luma<u8>, Vec<u8>> = capture::capture(String::from("/dev/video0")).convert();
+        let frame : ImageBuffer<Luma<u8>, Vec<u8>> = capture::fake_capture("fake.jpg");
 
         b.iter(|| {
             let frame = frame.convert();
@@ -181,7 +181,7 @@ mod tests {
 
     #[bench]
     fn process_frame_15(b : &mut Bencher) {
-        let frame : ImageBuffer<Luma<u8>, Vec<u8>> = capture::capture(String::from("/dev/video0")).convert();
+        let frame : ImageBuffer<Luma<u8>, Vec<u8>> = capture::fake_capture("fake.jpg");
 
         b.iter(|| {
             let frame = frame.convert();
@@ -191,7 +191,7 @@ mod tests {
 
     #[bench]
     fn process_frame_21(b : &mut Bencher) {
-        let frame : ImageBuffer<Luma<u8>, Vec<u8>> = capture::capture(String::from("/dev/video0")).convert();
+        let frame : ImageBuffer<Luma<u8>, Vec<u8>> = capture::fake_capture("fake.jpg");
 
         b.iter(|| {
             let frame = frame.convert();
@@ -201,7 +201,7 @@ mod tests {
 
     #[bench]
     fn process_frame_31(b : &mut Bencher) {
-        let frame : ImageBuffer<Luma<u8>, Vec<u8>> = capture::capture(String::from("/dev/video0")).convert();
+        let frame : ImageBuffer<Luma<u8>, Vec<u8>> = capture::fake_capture("fake.jpg");
 
         b.iter(|| {
             let frame = frame.convert();

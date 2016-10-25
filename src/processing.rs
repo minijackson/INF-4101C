@@ -306,7 +306,7 @@ mod tests {
 
     #[bench]
     fn sobel(b : &mut Bencher) {
-        let frame : ImageBuffer<Luma<u8>, Vec<u8>> = capture::capture(String::from("/dev/video0")).convert();
+        let frame : ImageBuffer<Luma<u8>, Vec<u8>> = capture::fake_capture("fake.jpg");
 
         b.iter(|| {
             let frame = frame.convert();
@@ -316,7 +316,7 @@ mod tests {
 
     #[bench]
     fn sobel_optimized(b : &mut Bencher) {
-        let frame : ImageBuffer<Luma<u8>, Vec<u8>> = capture::capture(String::from("/dev/video0")).convert();
+        let frame : ImageBuffer<Luma<u8>, Vec<u8>> = capture::fake_capture("fake.jpg");
 
         b.iter(|| {
             let frame = frame.convert();
@@ -326,7 +326,7 @@ mod tests {
 
     #[bench]
     fn sobel_and_threshold(b : &mut Bencher) {
-        let frame : ImageBuffer<Luma<u8>, Vec<u8>> = capture::capture(String::from("/dev/video0")).convert();
+        let frame : ImageBuffer<Luma<u8>, Vec<u8>> = capture::fake_capture("fake.jpg");
 
         b.iter(|| {
             let frame = frame.convert();
@@ -336,7 +336,7 @@ mod tests {
 
     #[bench]
     fn median_filter(b : &mut Bencher) {
-        let frame : ImageBuffer<Luma<u8>, Vec<u8>> = capture::capture(String::from("/dev/video0")).convert();
+        let frame : ImageBuffer<Luma<u8>, Vec<u8>> = capture::fake_capture("fake.jpg");
 
         b.iter(|| {
             let frame = frame.convert();
@@ -346,7 +346,7 @@ mod tests {
 
     #[bench]
     fn median_filter_hist_3(b : &mut Bencher) {
-        let frame : ImageBuffer<Luma<u8>, Vec<u8>> = capture::capture(String::from("/dev/video0")).convert();
+        let frame : ImageBuffer<Luma<u8>, Vec<u8>> = capture::fake_capture("fake.jpg");
 
         b.iter(|| {
             let frame = frame.convert();
@@ -356,7 +356,7 @@ mod tests {
 
     #[bench]
     fn median_filter_hist_5(b : &mut Bencher) {
-        let frame : ImageBuffer<Luma<u8>, Vec<u8>> = capture::capture(String::from("/dev/video0")).convert();
+        let frame : ImageBuffer<Luma<u8>, Vec<u8>> = capture::fake_capture("fake.jpg");
 
         b.iter(|| {
             let frame = frame.convert();
@@ -366,7 +366,7 @@ mod tests {
 
     #[bench]
     fn median_filter_hist_9(b : &mut Bencher) {
-        let frame : ImageBuffer<Luma<u8>, Vec<u8>> = capture::capture(String::from("/dev/video0")).convert();
+        let frame : ImageBuffer<Luma<u8>, Vec<u8>> = capture::fake_capture("fake.jpg");
 
         b.iter(|| {
             let frame = frame.convert();
@@ -376,7 +376,7 @@ mod tests {
 
     #[bench]
     fn median_filter_hist_15(b : &mut Bencher) {
-        let frame : ImageBuffer<Luma<u8>, Vec<u8>> = capture::capture(String::from("/dev/video0")).convert();
+        let frame : ImageBuffer<Luma<u8>, Vec<u8>> = capture::fake_capture("fake.jpg");
 
         b.iter(|| {
             let frame = frame.convert();
@@ -386,7 +386,7 @@ mod tests {
 
     #[bench]
     fn median_filter_hist_21(b : &mut Bencher) {
-        let frame : ImageBuffer<Luma<u8>, Vec<u8>> = capture::capture(String::from("/dev/video0")).convert();
+        let frame : ImageBuffer<Luma<u8>, Vec<u8>> = capture::fake_capture("fake.jpg");
 
         b.iter(|| {
             let frame = frame.convert();
@@ -396,7 +396,7 @@ mod tests {
 
     #[bench]
     fn median_filter_hist_31(b : &mut Bencher) {
-        let frame : ImageBuffer<Luma<u8>, Vec<u8>> = capture::capture(String::from("/dev/video0")).convert();
+        let frame : ImageBuffer<Luma<u8>, Vec<u8>> = capture::fake_capture("fake.jpg");
 
         b.iter(|| {
             let frame = frame.convert();
@@ -406,7 +406,7 @@ mod tests {
 
     #[bench]
     fn median_filter_hist_optimized_3(b : &mut Bencher) {
-        let frame : ImageBuffer<Luma<u8>, Vec<u8>> = capture::capture(String::from("/dev/video0")).convert();
+        let frame : ImageBuffer<Luma<u8>, Vec<u8>> = capture::fake_capture("fake.jpg");
 
         b.iter(|| {
             let frame = frame.convert();
@@ -416,7 +416,7 @@ mod tests {
 
     #[bench]
     fn median_filter_hist_optimized_5(b : &mut Bencher) {
-        let frame : ImageBuffer<Luma<u8>, Vec<u8>> = capture::capture(String::from("/dev/video0")).convert();
+        let frame : ImageBuffer<Luma<u8>, Vec<u8>> = capture::fake_capture("fake.jpg");
 
         b.iter(|| {
             let frame = frame.convert();
@@ -426,7 +426,7 @@ mod tests {
 
     #[bench]
     fn median_filter_hist_optimized_9(b : &mut Bencher) {
-        let frame : ImageBuffer<Luma<u8>, Vec<u8>> = capture::capture(String::from("/dev/video0")).convert();
+        let frame : ImageBuffer<Luma<u8>, Vec<u8>> = capture::fake_capture("fake.jpg");
 
         b.iter(|| {
             let frame = frame.convert();
@@ -436,7 +436,7 @@ mod tests {
 
     #[bench]
     fn median_filter_hist_optimized_15(b : &mut Bencher) {
-        let frame : ImageBuffer<Luma<u8>, Vec<u8>> = capture::capture(String::from("/dev/video0")).convert();
+        let frame : ImageBuffer<Luma<u8>, Vec<u8>> = capture::fake_capture("fake.jpg");
 
         b.iter(|| {
             let frame = frame.convert();
@@ -446,7 +446,7 @@ mod tests {
 
     #[bench]
     fn median_filter_hist_optimized_21(b : &mut Bencher) {
-        let frame : ImageBuffer<Luma<u8>, Vec<u8>> = capture::capture(String::from("/dev/video0")).convert();
+        let frame : ImageBuffer<Luma<u8>, Vec<u8>> = capture::fake_capture("fake.jpg");
 
         b.iter(|| {
             let frame = frame.convert();
@@ -456,7 +456,7 @@ mod tests {
 
     #[bench]
     fn median_filter_hist_optimized_31(b : &mut Bencher) {
-        let frame : ImageBuffer<Luma<u8>, Vec<u8>> = capture::capture(String::from("/dev/video0")).convert();
+        let frame : ImageBuffer<Luma<u8>, Vec<u8>> = capture::fake_capture("fake.jpg");
 
         b.iter(|| {
             let frame = frame.convert();

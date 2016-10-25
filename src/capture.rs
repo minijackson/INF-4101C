@@ -2,7 +2,14 @@ extern crate rscam;
 extern crate image;
 
 use self::rscam::{Camera, Config};
-use self::image::{ImageBuffer, Rgba, Rgb, ConvertBuffer, GenericImage};
+use self::image::{
+    ImageBuffer,
+    Rgba,
+    Rgb,
+    Luma,
+    ConvertBuffer,
+    GenericImage
+};
 
 use std::sync::mpsc::Sender;
 use std::thread;
@@ -68,4 +75,10 @@ pub fn capture(device : String) -> ImageBuffer<Rgba<u8>, Vec<u8>> {
                                 frame.resolution.1,
                                 frame).unwrap();
     return frame.convert();
+}
+
+pub fn fake_capture(image : &str) -> ImageBuffer<Luma<u8>, Vec<u8>> {
+    let frame = image::open(&Path::new(image)).unwrap();
+
+    ImageBuffer::from_fn(frame.width(), frame.height(), |x, y| frame.get_pixel(x, y)).convert()
 }
