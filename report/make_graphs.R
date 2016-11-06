@@ -11,7 +11,7 @@ data.optimal = subset(data, grepl('Filtre médian histogramme optimisé|Sobel op
 limits <- aes(ymax=Durée + Ecart.type, ymin=Durée - Ecart.type)
 
 pdf("simple_medians.pdf", height=6)
-ggplot(data.simple_medians, aes(x=Taille.du.filtre, y=Durée, fill=Filtre)) + xlab("Taille du filtre") + ylab("Durée (ns)") + theme(legend.position=c(.8, .2)) + geom_bar(stat="identity", position=position_dodge()) + geom_errorbar(limits, width=1)
+ggplot(data.simple_medians, aes(x=Taille.du.filtre, y=Durée, fill=Filtre)) + xlab("Taille du filtre") + ylab("Durée (ns)") + theme(legend.position=c(.8, .2)) + geom_bar(stat="identity", position="dodge") + geom_errorbar(limits, width=1, position="dodge")
 dev.off()
 
 pdf("medians.pdf", height=6)
