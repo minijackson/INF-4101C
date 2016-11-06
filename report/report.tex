@@ -1,0 +1,773 @@
+\documentclass{report}
+
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[french]{babel}
+\usepackage[hidelinks]{hyperref}
+\usepackage{amsmath}
+\usepackage{fullpage}
+\usepackage{microtype}
+
+\usepackage{fontspec}
+\setmonofont[Scale=0.8]{Hack}
+\usepackage{color}
+\usepackage{minted}
+\usepackage{booktabs}
+
+\usemintedstyle{tomorrow}
+
+\definecolor{bg}{rgb}{0.95,0.95,0.95}
+
+\setminted{linenos,bgcolor=bg,tabsize=4,breaklines}
+%\setmintedinline{bgcolor=white}
+
+\renewcommand\listingscaption{Extrait de code}
+\renewcommand\listoflistingscaption{Liste des extraits de code}
+
+\author{Rémi \textsc{Nicole}}
+\title{Rapport d'optimisation des temps de calcul et processeur}
+
+\begin{document}
+
+\maketitle
+
+~\clearpage
+
+\tableofcontents
+
+% ====================
+\chapter{Introduction}
+% ====================
+
+\section{Présentation du problème}
+
+\paragraph{} Le but du projet demandé est de faire une partie d'un programme
+servant à détecter des lignes, par exemple pour détecter le changement de voie
+via une caméra embarquée dans une voiture.
+
+\section{Architecture}
+
+\paragraph{} Afin de pouvoir installer l'écosystème Rust, on m'a fourni une
+carte plus récente, à savoir la carte Quad, Sabre Lite, de Freescale.
+
+\paragraph{} L'architecture sur laquelle j'ai travaillé est une architecture
+ARMfh, qui est donc une architecture supportant ARMv7 et ayant un support
+matériel pour les points flottants (\textit{hf} signifiant
+\textit{hard float}).
+
+\paragraph{} De plus, la carte fournie possède un processeur contenant 2 cœurs
+avec 1 thread par cœur, allant de 400MHz à 1000MHz.
+
+\section{Choix du langage}
+
+\paragraph{} Rust est un langage se focalisant sur la sécurité d'exécution: il
+prévient les erreurs de segmentations, garantit la sûreté entre les threads,
+tout en restant à une rapidité très proche du C++.
+
+\paragraph{} La rapidité et la sécurité d'exécution correspondent tous deux aux
+objectifs du projet, à savoir détecter rapidement les lignes et minimiser les
+erreurs (utile si l'application est utilisé dans un contexte d'assistance à la
+conduite).
+
+\section{Bibliothèques en Rust utilisées}
+
+\paragraph{} Voici l'ensemble des bibliothèques utilisées pour implémenter ce
+projet en Rust suivies de leur description:
+
+\begin{table}[H]
+	\centering
+	\begin{tabular}{lp{10cm}}
+		\toprule
+		Bibliothèque & Description\\
+		\midrule
+		piston\_window & Bibliothèque servant à afficher une fenêtre contenant
+		un contexte graphique 2D ou 3D.\\
+
+		image & Bibliothèque fournissant un écosystème pour le traitement
+		d'image avec des fonctions pour lire, écrire et convertir des images.
+		Quelques fonctions de traitement d'image sont présentes (flou gaussien,
+		recadrages\ldots) mais ne sont pas utilisées dans le projet.\\
+
+		rscam & Bibliothèque se basant sur la bibliothèque C v4l pour fournir
+		un moyen de récupérer des images venant de caméras.\\
+
+		docopt & Bibliothèque permettant de lire d'une manière simple les
+		arguments fournis via la ligne de commande.\\
+		\bottomrule
+	\end{tabular}%
+	\label{tab:libs}
+	\caption{Bibliothèques utilisées pour ce projet}
+\end{table}
+
+% ======================
+\chapter{Projet de base}
+% ======================
+
+\paragraph{} Afin de bien pouvoir commencer le projet, il m'a fallu analyser le
+code du projet initial qui nous a été donné et qui utilise la librairie OpenCV
+pour fournir une implémentation basique. Il m'a fallu ensuite traduire ça en
+Rust pour pouvoir l'optimiser.
+
+\section{Analyse du code}
+
+\paragraph{} On remarque que le projet de base essaye tout d'abord d'ouvrir le
+flux vidéo de la caméra ayant l'identifiant 0, puis affiche 4 fenêtres, et
+calcule le résultat du filtrage de l'image actuelle par les filtres conversion
+en niveau de gris, sobel et médian. Ensuite, il les affiches côte à côte avec
+l'image originale, et ce,tant que l'utilisateur n'appuie pas sur la touche
+``q''.
+
+\paragraph{} On peut voir que toutes les fonctions de filtres, affichage, et
+récupération de l'image de la webcam et même attente des entrées du clavier
+sont fournies par OpenCV.
+
+\section{Défauts d'optimisations}
+
+\paragraph{} Sans regarder l'implémentation d'OpenCV des filtres, on peut au
+premier abord remarquer que le filtre Sobel est effectué en cinq étapes
+séparées:
+
+\begin{itemize}
+	\item Calcul du gradient X
+	\item Calcul de la valeur absolue du gradient X
+	\item Calcul du gradient Y
+	\item Calcul de la valeur absolue du gradient Y
+	\item Calcul du gradient total
+\end{itemize}
+
+\paragraph{} Comme il s'agit de cinq appels séparés, on peut en déduire que
+pour le filtrage par le filtre Sobel d'une seule image, il nous faut itérer
+cinq fois sur chaque pixel de l'image. Comme il est possible d'avoir le même
+résultat en un seul parcours de l'image, il s'agit donc bien d'une optimisation
+possible.
+
+\paragraph{} De plus, d'une manière plus générale, les filtres sont tous
+effectués séparément, alors qu'il est possible de les combiner pour minimiser
+le nombre de parcours des pixels de l'image.
+
+\paragraph{} Enfin, les implémentations d'OpenCV sont faites de telle sorte
+qu'elles s'exécutent sur un seul thread, et donc ne tirent pas d'avantage des
+machines possédant plusieurs cœurs ou ayant la fonctionnalité
+d'hyper-threading.
+
+\section{Défauts de style}
+
+\paragraph{} Bien que le C++ soit presque complètement rétro-compatible avec le
+C, l'utilisation des header C fournis dans la glibc sont déconseillés. En
+effet, plutôt que d'utiliser ``stdio.h'' et ``stdlib.h'', il est préférable
+d'utiliser ``cstdio'' et ``cstdlib'' qui sont fournis par le C++. De plus,
+aucune des fonctions venant de ces headers sont utilisées. Ils peuvent donc
+être supprimés.
+
+\paragraph{} Enfin, selon l'utilisation des directives
+\mintinline{cpp}{using namespace} sont déconseillées (notamment par les
+conventions de code de Google) pour éviter de ``polluer'' l'espace de nom
+global. Il est préférable d'utiliser des directives telles que
+\mintinline{cpp}{using std::cout;} ou \mintinline{cpp}{using cv::Mat;}
+uniquement.
+
+% ================================================
+\chapter{Implémentation du projet de base en Rust}
+% ================================================
+
+\paragraph{} L'étape suivante après l'analyse du projet de base fournit a été
+de trouver et implémenter un projet équivalent en Rust.
+
+\section{Boucle principale}
+
+\paragraph{} La bibliothèque \texttt{piston\_window} fournit une boucle
+principale dans laquelle le traitement s'opère. La méthode utilisée ressemble à
+celle-ci:\\
+
+\begin{listing}[H]
+\begin{minted}{rust}
+let (sender, receiver) = channel();
+
+capture::stream(sender, device);
+
+while let Some(e) = window.next() {
+	if let Ok(frame) = receiver.try_recv() {
+		let frame = process_frame(frame.convert(), median_size, threshold);
+		displayed_texture = display::build_texture(/* ...frame... */);
+	}
+
+	display::show_texture(/* ...displayed_texture... */);
+}
+\end{minted}
+\label{lst:main_loop}
+\caption{Boucle principale}
+\end{listing}
+
+\paragraph{} Afin de traiter en temps réel le flux venant de la caméra, nous
+démarrons un thread capturant les images de la webcam et les envoyant au thread
+principal via un \texttt{channel} et on traite l'image dans le thread
+principal.
+
+\section{Capture des images de la webcam}
+
+\paragraph{} Voici une partie du code simplifiée permettant de récupérer une
+image de la caméra.
+
+\begin{listing}[H]
+\begin{minted}{rust}
+let mut cam = Camera::new(device).unwrap();
+
+cam.start(&Config {
+	interval: (1, 30),
+	resolution: (640, 480),
+	format: b"RGB3",
+	..Default::default()
+}).unwrap();
+
+let frame = cam.capture().unwrap();
+let frame : ImageBuffer<Rgb<u8>, _>
+	= ImageBuffer::from_raw(frame.resolution.0,
+	                        frame.resolution.1,
+	                        frame).unwrap();
+return frame.convert();
+\end{minted}
+\label{lst:capture}
+\caption{Capture d'une image}
+\end{listing}
+
+\paragraph{} La première partie, lignes 1--8, sert à initialiser la caméra avec
+certains paramètres. \mintinline{rust}{device} est une variable contenant sous
+la forme d'une chaîne de caractères le ``device'' représentant la caméra dans
+les systèmes POSIX. Elle sera la plupart du temps égale à
+\mintinline{rust}{"/dev/video0"}.
+
+\paragraph{} Ensuite, nous démarrons la caméra avec certains paramètres:
+
+\begin{description}
+	\item[interval:] Une fréquence d'images fournie sous la forme d'intervalle,
+		à savoir ici $\frac{1}{30}$ secondes entre chaque images.
+	\item[resolution:] Une taille définie en pixels
+	\item[format:] Le format pour le stockage des couleurs, fournie sous la
+		convention ``FourCC''.
+	\item Les paramètres restants sont initialisés à leurs valeurs par défaut.
+		Parmi ces paramètres, il y a la méthode de stockage pour les vidéos
+		entrelacées et le nombre de buffers utilisés par la caméras.
+\end{description}
+
+\paragraph{} Puis, nous capturons l'image, et convertissons le résultat dans un
+format convenable pour le traiter grâce à l'écosystème fourni par la
+bibliothèque ``image'' grâce à la fonction
+\mintinline{rust}{ImageBuffer::from_raw}. Cette fonction nous retourne donc
+une structure de type \mintinline{rust}{ImageBuffer<Rgb<u8>, _>},
+\mintinline{rust}{_} étant un type automatiquement déduit, et sera ensuite
+convertie en \mintinline{rust}{ImageBuffer<Luma<u8>, Vec<u8>>} au retour de
+la fonction. Cela a pour effet de convertir l'image couleur en niveaux de
+luminosités (\mintinline{rust}{Luma<u8>}) et de stocker les pixels sous la
+forme d'un tableau d'entiers non-signés de 1 octet
+(\mintinline{rust}{Vec<u8>}).
+
+\paragraph{} Nous pouvons remarquer dans ce codes des méthodes
+\mintinline{rust}{.unwrap()} disséminés un peu partout. C'est tout simplement
+dû au fait que presque chaque opération peut ne pas s'effectuer correctement.
+Par exemple à la ligne 1, le fichier ``device'' peut ne pas exister, aux lignes
+3--8, la caméra peut ne pas supporter certaines valeurs de paramètres, etc.
+Cette méthode permet de dire qui si telle action s'est mal exécutée, le
+programme doit immédiatement s'arrêter.
+
+\section{Traitement de l'image}
+
+\subsection{Fonction principale}
+
+\paragraph{} Pour pouvoir réutiliser le traitement global de l'image dans
+d'autres fonctions, comme pour le benchmarking ou pour d'autre moyens
+d'acquisitions / visualisations, le traitement d'image est stocké dans une
+fonction telle que voici:\\
+
+\begin{listing}[H]
+\begin{minted}{rust}
+fn process_frame(frame : ImageBuffer<Luma<u8>, Vec<u8>>,
+                 median_kernel_size : usize,
+                 threshold : u8)
+		-> ImageBuffer<Luma<u8>, Vec<u8>> {
+	let frame = processing::median_filter(frame, median_kernel_size);
+	let frame = processing::sobel(frame);
+	return processing::threshold(frame, threshold);
+}
+\end{minted}
+\label{lst:main_process}
+\caption{Traitement d'une image}
+\end{listing}
+
+\paragraph{} On remarque que les fonctions effectuant les filtres sont préfixés
+par \mintinline{rust}{processing::}. Il s'agit d'un module, équivalent aux
+``namespaces'' en C++, dans lequel j'ai mis les fonctions de traitement
+d'image, pour des raisons de clarté.
+
+\paragraph{} On notera aussi que la variable \mintinline{rust}{frame} a été
+redéclarée plusieurs fois, plutôt que réassigné, car lorsqu'on l'utilise par
+exemple dans la fonction \mintinline{rust}{processing::median_filter}, la
+variable frame n'est pas copiée, mais ``déplacée'' dans la fonction et ainsi
+n'est plus utilisable après cette étape. Il nous faut donc stocker le résultat
+dans une nouvelle variable. Heureusement, le langage Rust nous permet de
+réutiliser des noms de variables que ce soient des types équivalents auparavant
+ou non.
+
+\subsection{Implémentation naïve du filtre Sobel}
+
+\paragraph{} Voici l'implémentation naïve du filtre Sobel:\\
+
+\begin{listing}[H]
+\begin{minted}{rust}
+pub fn sobel(frame : ImageBuffer<Luma<u8>, Vec<u8>>)
+		-> ImageBuffer<Luma<u8>, Vec<u8>> {
+	let mut result = ImageBuffer::new(640, 480);
+
+	for i in 1..639 {
+		for j in 1..479 {
+			let north_west = frame[(i-1, j-1)].channels()[0] as i32;
+			let north      = frame[(i, j-1)].channels()[0] as i32;
+			let north_east = frame[(i+1, j-1)].channels()[0] as i32;
+
+			let west = frame[(i-1, j)].channels()[0] as i32;
+			let east = frame[(i+1, j)].channels()[0] as i32;
+
+			let south_west = frame[(i-1, j+1)].channels()[0] as i32;
+			let south      = frame[(i, j+1)].channels()[0] as i32;
+			let south_east = frame[(i+1, j+1)].channels()[0] as i32;
+
+			let gx : i32 = north_west + south_west + (2 * west)  -
+			               north_east - south_east - (2 * east);
+			let gy : i32 = north_west + north_east + (2 * north) -
+			               south_west - south_east - (2 * south);
+
+			let root : u8 = (((gx * gx) + (gy * gy)) as f32).sqrt() as u8;
+
+			result.put_pixel(i, j, Luma([root]));
+		}
+	}
+
+	return result;
+}
+\end{minted}
+\label{lst:naive_sobel}
+\caption{Sobel naïf}
+\end{listing}
+
+\paragraph{} On remarque qu'il y a beaucoup de conversions explicites entre
+entiers signés / non-signés, flottants, et tailles 1 octet / 4 octets. Cela
+s'explique par le fait qu'en Rust, il n'y ait pas de conversion implicites pour
+les nombres, et que par exemple, aux lignes 18--21, si les valeurs n'étaient
+pas des entiers signés, les nombres négatifs ne seraient pas atteignables: la
+soustraction effectuerait un ``underflow'' et ferait planter le programme
+(contrairement au C / C++ où le programme continuerait dans son erreur).
+
+\paragraph{} On observe aussi la conversion en \mintinline{rust}{f32} juste
+avant la racine carrée pour garder une précision convenable, suivie d'une
+conversion en \mintinline{rust}{u8} pour représenter une valeur d'un niveau
+de luminosité.
+
+\paragraph{} On peut voir aussi des appels à des méthodes
+\mintinline{rust}{.channels()} puis une récupération de l'élément à l'indice 0.
+Ces opérations sont présentes car une image peut être composée de couleurs,
+stockées sur 3 canaux, avoir une valeur d'alpha, rajoutant un canal, etc.
+La luminosité n'étant stockée que sur un canal, seul l'élément à l'indice 0
+existe. Cela explique aussi pourquoi la création d'un luminosité:
+\mintinline{rust}{Luma([root])} soit composée d'un tableau dans les paramètres.
+
+\paragraph{} Hormis ces particularités, il s'agit d'un filtre Sobel directement
+traduit du début du TP2.
+
+\subsection{Implémentation naïve du filtre médian}
+
+\paragraph{} Voici l'implémentation naïve du filtre médian $3 \times 3$:
+
+\begin{listing}[H]
+\begin{minted}{rust}
+pub fn median_filter(frame : ImageBuffer<Luma<u8>, Vec<u8>>)
+		-> ImageBuffer<Luma<u8>, Vec<u8>> {
+	let mut result = ImageBuffer::new(640, 480);
+
+	let mut kernel = [0; 9];
+
+	for i in 1..638 {
+		for j in 1..478 {
+			// Fill the kernel
+			for k in 0..3 {
+				for l in 0..3 {
+					let index = k + 3 * l;
+					let coord_x = (i + k - 1) as u32;
+					let coord_y = (j + l - 1) as u32;
+
+					kernel[index] = frame[(coord_x, coord_y)].channels()[0];
+				}
+			}
+
+			kernel.sort();
+			let pixel_value = kernel[5];
+			result.put_pixel(i as u32, j as u32, Luma([pixel_value]));
+		}
+	}
+
+	return result;
+}
+\end{minted}
+\label{lst:naive_median}
+\caption{Filtre médian naïf}
+\end{listing}
+
+\paragraph{} Il s'agit ici de l'implémentation ayant l'algorithme utilisant le
+tri pour calculer les valeurs médianes. Nous avons donc une complexité totale
+de:
+
+\[
+	O\left(\overbrace{n}^\text{Parcours de l'image} \times
+	  \left(\underbrace{n \times \log(n)}_\text{Tri du tableau} +
+	  \overbrace{n}^\text{Ajout des couleurs}\right)\right) = O(n^2 \times \log(n))
+\]
+
+\paragraph{} Rien de particulièrement extraordinaire ici: pour chaque pixel,
+on remplit un tableau avec les contours du pixel, on le trie puis on récupère
+la valeur médiane et on le stocke dans l'image de sortie aux mêmes coordonnées.
+
+% =====================
+\chapter{Optimisations}
+% =====================
+
+\section{Sobel}
+
+\subsection{Optimisations effectuées}
+
+\paragraph{} L'optimisation du sobel est la même que dans le TP2: on déroule la
+boucle une fois, puis on fait une approximation du calcul du gradient. Voici
+le résultat:
+
+\begin{listing}[H]
+\begin{minted}{rust}
+pub fn sobel_optimized(frame : ImageBuffer<Luma<u8>, Vec<u8>>)
+		-> ImageBuffer<Luma<u8>, Vec<u8>> {
+	let mut result = ImageBuffer::new(640, 480);
+
+	let mut i = 1;
+	while i < 638 {
+		let mut j = 1;
+		while j < 479 {
+			let north_west  = frame[(i-1, j-1)].channels()[0] as i32;
+			let north       = frame[(i, j-1)].channels()[0] as i32;
+			let north_east  = frame[(i+1, j-1)].channels()[0] as i32;
+			let north_east2 = frame[(i+2, j-1)].channels()[0] as i32;
+
+			let west  = frame[(i-1, j)].channels()[0] as i32;
+			let west2 = frame[(i, j)].channels()[0] as i32;
+			let east  = frame[(i+1, j)].channels()[0] as i32;
+			let east2 = frame[(i+2, j)].channels()[0] as i32;
+
+			let south_west  = frame[(i-1, j+1)].channels()[0] as i32;
+			let south       = frame[(i, j+1)].channels()[0] as i32;
+			let south_east  = frame[(i+1, j+1)].channels()[0] as i32;
+			let south_east2 = frame[(i+2, j+1)].channels()[0] as i32;
+
+			let gx : i32 = north_west + south_west + (west << 1)  -
+			               north_east - south_east - (east << 1);
+			let gy : i32 = north_west + north_east + (north << 1) -
+			               south_west - south_east - (south << 1);
+
+			let gx2 : i32 = north + (west2 << 1) + south -
+			                north_east2 - (east2 << 1) - south_east2;
+			let gy2 : i32 = north + (north_east << 1) + north_east2 -
+			                south - (south_east << 1) - south_east2;
+
+			let root  : u8 = (((gx.abs()  + gy.abs())  >> 1) as f32 * 1.414216) as u8;
+			let root2 : u8 = (((gx2.abs() + gy2.abs()) >> 1) as f32 * 1.414216) as u8;
+
+			result.put_pixel(i, j, Luma([root]));
+			result.put_pixel(i + 1, j, Luma([root2]));
+
+			j += 1;
+		}
+		i += 2;
+	}
+
+	return result;
+}
+\end{minted}
+\label{lst:sobel_optimized}
+\caption{Sobel optimisé}
+\end{listing}
+
+\paragraph{} La seule particularité induite par le langage Rust a été de devoir
+changer les boucles \mintinline{rust}{for} en boucles \mintinline{rust}{while}
+pour pouvoir incrémenter par 2. En effet, les boucles \mintinline{rust}{for} en
+Rust sont l'équivalent des boucles ``foreach'' en C++ ou Java.
+
+\subsection{Gains}
+
+% TODO(minijackson)
+\paragraph{}
+
+\begin{figure}[H]
+	\centering
+	\includegraphics[width=\textwidth]{sobels.pdf}%
+	\label{fig:sobels}
+	\caption{Comparaisons des différentes implémentations du filtre Sobel}
+\end{figure}
+
+\section{Médian}
+
+\subsection{Avec histogramme simple}
+
+\subsubsection{Optimisations effectuées}
+
+\paragraph{} La première étape pour optimiser le filtre médian a été d'utiliser
+un histogramme pour calculer les médians plutôt que de devoir faire un tri
+entier.
+
+\paragraph{} La méthode simple est de créer un histogramme pour le pixel
+actuel, puis de le remplir avec les valeurs de luminosité des pixels au
+voisinage. Nous avons donc un histogramme de taille 255, et la méthode pour
+calculer le médian est de prendre le nombre d'éléments $s$ de l'histogramme
+(taille du filtre au carré dans les cas hors du bord), et de le soustraire
+successivement au nombre d'élément dans une colonne. En faisant varier les
+indices de colonne dans l'ordre croissant, lorsque $s = 0$, c'est l'indice
+actuel qui est le médian de l'histogramme. En code Rust, cela donne:
+
+\begin{listing}[H]
+\begin{minted}{rust}
+pub fn median(&self) -> u8 {
+	let mut sum : i32 = self.count as i32 / 2;
+	let mut index = 0;
+
+	while sum > 0 && index < 256 {
+	    sum -= self.values[index] as i32;
+	    index += 1;
+	}
+
+	return (index - 1) as u8;
+}
+\end{minted}
+\label{tab:hist_median}
+\caption{Calcul du médian d'un histogramme}
+\end{listing}
+
+\paragraph{} On remarque que le premier paramètre n'est pas typé et s'appelle
+\mintinline{rust}{self}, qui est un mot-clef particulier en Rust. Il s'agit
+d'une définition d'une ``méthode'' de la structure \mintinline{rust}{Histogram}
+et self représente l'objet actuel (équivalent à \mintinline{cpp}{this} en C++).
+
+\paragraph{} Afin de spécifier qu'il s'agissent de méthodes de la structure
+\mintinline{rust}{Histogram}, les définitions sont entourées d'un bloc
+\mintinline{rust}{impl Histogram}. Parmi les autres méthode, il y a
+\mintinline{rust}{increment(luma)}, \mintinline{rust}{decrement(luma)} pour
+incrémenter et décrémenter des valeurs de luminosités, et une méthode
+``statique'' \mintinline{rust}{new()} pour créer un nouvel histogramme.
+
+\paragraph{} Au final, cette méthode nous donne comme complexité:
+
+\[
+	O\left(\overbrace{n}^\text{Parcours de l'image} \times
+	  \left(\underbrace{n}_\text{Ajout des couleurs} +
+	  \overbrace{n}^\text{Calcul du médian}\right)\right) = O(n^2)
+\]
+
+\paragraph{} On a donc pour fonction de filtrage par filtre médian:
+
+\begin{listing}[H]
+\begin{minted}{rust}
+pub fn median_filter_hist(frame : ImageBuffer<Luma<u8>, Vec<u8>>,
+                          kernel_size : usize)
+		-> ImageBuffer<Luma<u8>, Vec<u8>> {
+	let mut result = ImageBuffer::new(640, 480);
+
+	let kernel_offset = ((kernel_size - 1) / 2) as i32;
+
+	for i in 0..640 {
+		for j in 0..480 {
+			let mut hist = Histogram::new();
+
+			for k in (i as i32 - kernel_offset)..(i as i32 + kernel_offset + 1) {
+				for l in (j as i32 - kernel_offset)..(j as i32 + kernel_offset + 1) {
+					if check_coordinates(k, l) {
+						let color = frame[(k as u32, l as u32)].channels()[0];
+						hist.increment(color);
+					}
+				}
+			}
+
+			let median_color = Luma([hist.median()]);
+			result.put_pixel(i as u32, j as u32, median_color);
+		}
+	}
+
+	return result;
+}
+\end{minted}
+\label{lst:median_filter_hist}
+\caption{Filtre médian optimisé avec histogramme en $O(n^2)$}
+\end{listing}
+
+\subsubsection{Gains}
+
+\begin{figure}[H]
+	\centering
+	\includegraphics[width=\textwidth]{simple_medians.pdf}%
+	\label{fig:simple_medians}
+	\caption{Comparaisons des deux implémentations du filtre médian}
+\end{figure}
+
+\subsection{Avec histogramme optimisé}
+
+\subsubsection{Optimisations effectuées}
+
+\paragraph{} L'étape suivante pour l'optimisation du filtre médian a été
+d'implémenter l'algorithme décrit dans ``\textit{Median Filtering in Constant
+	Time}''. Il s'agit donc de réutiliser le précédent histogramme pour éviter
+de insérer à nouveau les valeurs de luminosités déjà récupérées.
+
+\paragraph{} Nous avons donc un algorithme de complexité:
+
+\[
+	O\left(\overbrace{n}^\text{Parcours de l'image} \times
+	  \underbrace{2 \times \sqrt{n}}_\text{\parbox{3cm}{Ajout et suppression des colonnes de l'histogramme}} +
+	  \overbrace{\sqrt{n}}^\text{\parbox{3cm}{Nombre d'initialisations d'histogrammes}} \times
+	  \underbrace{n}_\text{Taille du filtre}\right) = O(n\sqrt{n})
+\]
+
+\paragraph{} Et voici comment cela se traduit dans le projet:
+
+\begin{listing}[H]
+\begin{minted}{rust}
+pub fn median_filter_hist_optimized(frame : ImageBuffer<Luma<u8>, Vec<u8>>,
+                                    kernel_size : usize)
+		-> ImageBuffer<Luma<u8>, Vec<u8>> {
+	let mut result = ImageBuffer::new(640, 480);
+
+	let kernel_offset = ((kernel_size - 1) / 2) as i32;
+
+	for i in 0..640 {
+		let mut hist = Histogram::new();
+
+		for k in (i as i32 - kernel_offset)..(i as i32 + kernel_offset + 1) {
+			for l in 0..(kernel_offset + 1) {
+				if check_coordinates(k, l as i32) {
+					let color = frame[(k as u32, l as u32)].channels()[0];
+					hist.increment(color);
+				}
+			}
+		}
+
+		for j in 0..480 {
+			let old_column_coord = j as i32 - kernel_offset - 1i32;
+			let new_column_coord = j as i32 + kernel_offset;
+
+			for k in (i as i32 - kernel_offset)..(i as i32 + kernel_offset + 1) {
+				if check_coordinates(k, old_column_coord) {
+					let color = frame[(k as u32, old_column_coord as u32)].channels()[0];
+					hist.decrement(color);
+				}
+			}
+
+			for k in (i as i32 - kernel_offset)..(i as i32 + kernel_offset + 1) {
+				if check_coordinates(k, new_column_coord) {
+					let color = frame[(k as u32, new_column_coord as u32)].channels()[0];
+					hist.increment(color);
+				}
+			}
+
+			let median_color = Luma([hist.median()]);
+			result.put_pixel(i as u32, j as u32, median_color);
+		}
+	}
+
+	return result;
+}
+\end{minted}
+\label{lst:median_filter_hist_opti}
+\caption{Filtre médian optimisé avec histogramme en $O(n\sqrt{n})$}
+\end{listing}
+
+\subsubsection{Gains}
+
+\begin{figure}[H]
+	\centering
+	\includegraphics[width=\textwidth]{medians.pdf}%
+	\label{fig:medians}
+	\caption{Comparaisons des trois implémentations du filtre médian}
+\end{figure}
+
+% TODO(minijackson)
+\paragraph{}
+
+\section{Combinaisons}
+
+\subsection{Optimisations effectuées}
+
+\paragraph{}
+
+\subsection{Gains}
+
+% TODO(minijackson)
+\paragraph{}
+
+% ==================
+\chapter{Benchmarks}
+% ==================
+
+% TODO(minijackson)
+\paragraph{} Commodité
+
+\begin{table}[H]
+	\centering
+	\begin{tabular}{lrr}
+		\toprule
+		Benchmark & Nanosecondes par itération (ns) & Écart type (ns)\\
+		\midrule
+		Filtre médian naïf taille 3                & 156,249,733   & +/- 2,564,199\\
+		\midrule
+		Filtre médian Histogramme $O(n)$ taille 3  & 273,835,633   & +/- 2,628,886\\
+		Filtre médian Histogramme $O(n)$ taille 5  & 350,479,233   & +/- 2,987,593\\
+		Filtre médian Histogramme $O(n)$ taille 9  & 632,823,133   & +/- 2,601,370\\
+		Filtre médian Histogramme $O(n)$ taille 15 & 1,316,361,433 & +/- 6,738,010\\
+		Filtre médian Histogramme $O(n)$ taille 21 & 2,308,687,366 & +/- 7,455,609\\
+		Filtre médian Histogramme $O(n)$ taille 31 & 4,294,967,295 & +/- 31,194,853\\
+		\midrule
+		Filtre médian Histogramme $O(1)$ taille 3  & 213,110,199   & +/- 2,564,106\\
+		Filtre médian Histogramme $O(1)$ taille 5  & 231,504,033   & +/- 1,810,410\\
+		Filtre médian Histogramme $O(1)$ taille 9  & 267,983,399   & +/- 3,825,399\\
+		Filtre médian Histogramme $O(1)$ taille 15 & 321,735,000   & +/- 3,592,493\\
+		Filtre médian Histogramme $O(1)$ taille 21 & 381,676,533   & +/- 4,287,863\\
+		Filtre médian Histogramme $O(1)$ taille 31 & 470,031,866   & +/- 3,173,656\\
+		\midrule
+		Sobel naïf                                 &  29,704,633   & +/- 1,493,210\\
+		Sobel optimisé                             &  19,239,366   & +/- 1,094,539\\
+		Sobel optimisé et seuillage                &  21,553,533   & +/- 1,366,083\\
+		\midrule
+		Traitement complet avec médian taille 3    & 236,703,566   & +/- 3,445,960\\
+		Traitement complet avec médian taille 5    & 254,697,900   & +/- 3,184,183\\
+		Traitement complet avec médian taille 9    & 290,787,933   & +/- 3,738,697\\
+		Traitement complet avec médian taille 15   & 344,906,099   & +/- 4,363,739\\
+		Traitement complet avec médian taille 21   & 405,945,233   & +/- 4,189,213\\
+		Traitement complet avec médian taille 31   & 493,546,833   & +/- 5,892,350\\
+		\bottomrule
+	\end{tabular}%
+	\label{tab:bench}
+	\caption{Résultats des benchmarks sur la carte}
+\end{table}
+
+\begin{figure}[H]
+	\centering
+	\includegraphics[width=\textwidth]{process.pdf}%
+	\label{fig:process}
+	\caption{Benchmarks des implémentations optimisées}
+\end{figure}
+
+% ==================
+\chapter{Conclusion}
+% ==================
+
+\paragraph{} TODO: Dans une version ultérieure.
+
+% ====================
+\chapter{Perspectives}
+% ====================
+
+\paragraph{} TODO: Dans une version ultérieure.
+
+\listoffigures
+\listoflistings
+\listoftables
+
+\end{document}

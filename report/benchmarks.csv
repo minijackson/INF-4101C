@@ -1,0 +1,28 @@
+                              Filtre,   Taille du filtre,        Durée,    Ecart type
+Filtre médian naïf                  ,                  3,    156249733,       2564199
+Filtre médian histogramme           ,                  3,    273835633,       2628886
+Filtre médian histogramme           ,                  5,    350479233,       2987593
+Filtre médian histogramme           ,                  9,    632823133,       2601370
+Filtre médian histogramme           ,                 15,   1316361433,       6738010
+Filtre médian histogramme           ,                 21,   2308687366,       7455609
+Filtre médian histogramme           ,                 31,   4294967295,      31194853
+Filtre médian histogramme optimisé  ,                  3,    213110199,       2564106
+Filtre médian histogramme optimisé  ,                  5,    231504033,       1810410
+Filtre médian histogramme optimisé  ,                  9,    267983399,       3825399
+Filtre médian histogramme optimisé  ,                 15,    321735000,       3592493
+Filtre médian histogramme optimisé  ,                 21,    381676533,       4287863
+Filtre médian histogramme optimisé  ,                 31,    470031866,       3173656
+Sobel                               ,                  3,     29704633,       1493210
+Sobel optimisé                      ,                  3,     19239366,       1094539
+Sobel optimisé et seuillage         ,                  3,     21553533,       1366083
+Sobel optimisé et seuillage         ,                  5,     21553533,       1366083
+Sobel optimisé et seuillage         ,                  9,     21553533,       1366083
+Sobel optimisé et seuillage         ,                 15,     21553533,       1366083
+Sobel optimisé et seuillage         ,                 21,     21553533,       1366083
+Sobel optimisé et seuillage         ,                 31,     21553533,       1366083
+Traitement complet d'une image      ,                  3,    236703566,       3445960
+Traitement complet d'une image      ,                  5,    254697900,       3184183
+Traitement complet d'une image      ,                  9,    290787933,       3738697
+Traitement complet d'une image      ,                 15,    344906099,       4363739
+Traitement complet d'une image      ,                 21,    405945233,       4189213
+Traitement complet d'une image      ,                 31,    493546833,       5892350
