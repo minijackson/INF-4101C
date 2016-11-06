@@ -136,7 +136,7 @@ fn main() {
 fn process_frame(frame : ImageBuffer<Luma<u8>, Vec<u8>>, median_kernel_size : usize, threshold : u8)
         -> ImageBuffer<Luma<u8>, Vec<u8>> {
     let frame = processing::median_filter_hist_optimized(frame.convert(), median_kernel_size);
-    processing::sobel_and_threshold(frame.convert(), threshold)
+    processing::sobel_and_threshold(frame, threshold)
 }
 
 #[cfg(test)]

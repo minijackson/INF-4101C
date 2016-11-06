@@ -138,7 +138,7 @@ pub fn median_filter(frame : ImageBuffer<Luma<u8>, Vec<u8>>) -> ImageBuffer<Luma
 
     for i in 1..638 {
         for j in 1..478 {
-            // Fill kernel
+            // Fill the kernel
             for k in 0..3 {
                 for l in 0..3 {
                     let index = k + 3 * l;
@@ -201,15 +201,15 @@ pub fn median_filter_hist(frame : ImageBuffer<Luma<u8>, Vec<u8>>, kernel_size : 
 
     let mut result = ImageBuffer::new(640, 480);
 
-    let kernel_offset = (kernel_size - 1) / 2;
+    let kernel_offset = ((kernel_size - 1) / 2) as i32;
 
     for i in 0..640 {
         for j in 0..480 {
 
             let mut hist = Histogram::new();
 
-            for k in (i as i32 - kernel_offset as i32)..(i as i32 + kernel_offset as i32 + 1) {
-                for l in (j as i32 - kernel_offset as i32)..(j as i32 + kernel_offset as i32 + 1) {
+            for k in (i as i32 - kernel_offset)..(i as i32 + kernel_offset + 1) {
+                for l in (j as i32 - kernel_offset)..(j as i32 + kernel_offset + 1) {
                     if 0 <= k && k < 640 && 0 <= l && l < 480 {
                         let color = frame[(k as u32, l as u32)].channels()[0];
                         hist.increment(color);
@@ -230,13 +230,13 @@ pub fn median_filter_hist_optimized(frame : ImageBuffer<Luma<u8>, Vec<u8>>, kern
 
     let mut result = ImageBuffer::new(640, 480);
 
-    let kernel_offset = (kernel_size - 1) / 2;
+    let kernel_offset = ((kernel_size - 1) / 2) as i32;
 
 
     for i in 0..640 {
         let mut hist = Histogram::new();
 
-        for k in (i as i32 - kernel_offset as i32)..(i as i32 + kernel_offset as i32 + 1) {
+        for k in (i as i32 - kernel_offset)..(i as i32 + kernel_offset + 1) {
             for l in 0..(kernel_offset + 1) {
                 if check_coordinates(k, l as i32) {
                     let color = frame[(k as u32, l as u32)].channels()[0];
@@ -246,17 +246,17 @@ pub fn median_filter_hist_optimized(frame : ImageBuffer<Luma<u8>, Vec<u8>>, kern
         }
 
         for j in 0..480 {
-            let old_column_coord = j as i32 - kernel_offset as i32 - 1i32;
-            let new_column_coord = j as i32 + kernel_offset as i32;
+            let old_column_coord = j as i32 - kernel_offset - 1i32;
+            let new_column_coord = j as i32 + kernel_offset;
 
-            for k in (i as i32 - kernel_offset as i32)..(i as i32 + kernel_offset as i32 + 1) {
+            for k in (i as i32 - kernel_offset)..(i as i32 + kernel_offset + 1) {
                 if check_coordinates(k, old_column_coord) {
                     let color = frame[(k as u32, old_column_coord as u32)].channels()[0];
                     hist.decrement(color);
                 }
             }
 
-            for k in (i as i32 - kernel_offset as i32)..(i as i32 + kernel_offset as i32 + 1) {
+            for k in (i as i32 - kernel_offset)..(i as i32 + kernel_offset + 1) {
                 if check_coordinates(k, new_column_coord) {
                     let color = frame[(k as u32, new_column_coord as u32)].channels()[0];
                     hist.increment(color);
